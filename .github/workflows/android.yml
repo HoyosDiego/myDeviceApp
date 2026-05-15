@@ -27,28 +27,31 @@ jobs:
       - name: Create .env
         run: echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
 
-      - name: Build Unsigned APK
+      - name: Build Release APK
         run: |
           cd android
-          # Limpiamos por si acaso quedó algo del intento fallido anterior
-          ./gradlew clean 
           chmod +x gradlew
           ./gradlew assembleRelease
 
-      - name: Sign APK
-        uses: r0adkll/sign-android-release@v1
-        id: sign_app
-        with:
-          releaseDirectory: android/app/build/outputs/apk/release
-          signingKeyBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          alias: ${{ secrets.KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
-          # Especificamos una versión que SÍ existe en las imágenes de GitHub
-          buildToolsVersion: "34.0.0" 
+      - name: Sign APK Manually
+        run: |
+          # 1. Decodificar la keystore desde el secreto
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > release.keystore
+          
+          # 2. Encontrar el APK generado
+          APK_PATH=$(find android/app/build/outputs/apk/release -name "*.apk" ! -name "*unsigned*" | head -n 1)
+          
+          # 3. Firmar usando apksigner (viene en el SDK de Android)
+          # Usamos la versión 34 o 35 que ya está instalada en el runner
+          $ANDROID_HOME/build-tools/34.0.0/apksigner sign --ks release.keystore \
+            --ks-key-alias "${{ secrets.KEY_ALIAS }}" \
+            --ks-pass pass:"${{ secrets.KEYSTORE_PASSWORD }}" \
+            --key-pass pass:"${{ secrets.KEY_PASSWORD }}" \
+            --out MyDeviceApp-Signed.apk \
+            $APK_PATH
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MyDeviceApp-Release-APK
-          path: android/app/build/outputs/apk/release/*-signed.apk
+          name: MyDeviceApp-Final
+          path: MyDeviceApp-Signed.apk
