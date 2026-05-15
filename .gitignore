@@ -73,3 +73,13 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+
+# Variables de entorno
+.env
+.env.local
+.env.production
+
+# Firma de Android
+*.keystore
+*.jks
