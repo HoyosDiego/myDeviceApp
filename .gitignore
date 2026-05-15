@@ -83,3 +83,4 @@ yarn-error.log
 # Firma de Android
 *.keystore
 *.jks
+*.txt
