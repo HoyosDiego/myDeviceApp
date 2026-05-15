@@ -30,6 +30,8 @@ jobs:
       - name: Build Unsigned APK
         run: |
           cd android
+          # Limpiamos por si acaso quedó algo del intento fallido anterior
+          ./gradlew clean 
           chmod +x gradlew
           ./gradlew assembleRelease
 
@@ -42,9 +44,11 @@ jobs:
           alias: ${{ secrets.KEY_ALIAS }}
           keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
+          # Especificamos una versión que SÍ existe en las imágenes de GitHub
+          buildToolsVersion: "34.0.0" 
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: MyDeviceApp-Release-APK
-          path: android/app/build/outputs/apk/release/*.apk
+          path: android/app/build/outputs/apk/release/*-signed.apk
