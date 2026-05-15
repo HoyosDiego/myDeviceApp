@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android AAB (Play Store)
 on:
   push:
     branches: [ main ]
@@ -27,31 +27,31 @@ jobs:
       - name: Create .env
         run: echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
 
-      - name: Build Release APK
+      - name: Build Release Bundle (AAB)
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleRelease
+          ./gradlew bundleRelease
 
-      - name: Sign APK Manually
+      - name: Sign AAB
         run: |
-          # 1. Decodificar la keystore desde el secreto
+          # 1. Creamos el archivo de la llave desde el secreto
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > release.keystore
           
-          # 2. Encontrar el APK generado
-          APK_PATH=$(find android/app/build/outputs/apk/release -name "*.apk" ! -name "*unsigned*" | head -n 1)
+          # 2. Identificamos la ruta del bundle generado
+          AAB_PATH=$(find android/app/build/outputs/bundle/release -name "*.aab" | head -n 1)
           
-          # 3. Firmar usando apksigner (viene en el SDK de Android)
-          # Usamos la versión 34 o 35 que ya está instalada en el runner
-          $ANDROID_HOME/build-tools/34.0.0/apksigner sign --ks release.keystore \
-            --ks-key-alias "${{ secrets.KEY_ALIAS }}" \
-            --ks-pass pass:"${{ secrets.KEYSTORE_PASSWORD }}" \
-            --key-pass pass:"${{ secrets.KEY_PASSWORD }}" \
-            --out MyDeviceApp-Signed.apk \
-            $APK_PATH
+          # 3. Firmamos el AAB usando jarsigner (estándar para bundles)
+          jarsigner -keystore release.keystore \
+            -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
+            -keypass "${{ secrets.KEY_PASSWORD }}" \
+            $AAB_PATH "${{ secrets.KEY_ALIAS }}"
+          
+          # 4. Lo movemos a la raíz con un nombre claro para descargar
+          cp $AAB_PATH MyDeviceApp-Production.aab
 
-      - name: Upload APK Artifact
+      - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MyDeviceApp-Final
-          path: MyDeviceApp-Signed.apk
+          name: MyDeviceApp-Bundle-Final
+          path: MyDeviceApp-Production.aab
